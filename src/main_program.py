@@ -8,7 +8,7 @@ while True:
     pilihan = input("Pilihan menu: ")
 
     # ================= LOGIN =================
-    from epifanius_auth import auth_system
+    from src.epifanius_auth.auth_system import login, register
 
     if pilihan == "1":
 
