@@ -8,6 +8,8 @@ while True:
     pilihan = input("Pilihan menu: ")
 
     # ================= LOGIN =================
+    from epifanius_auth import auth_system
+
     if pilihan == "1":
 
         print("\n=== LOGIN ===")
@@ -17,7 +19,7 @@ while True:
 
         found = False
 
-        with open("data_user.txt", "r") as f:
+        with open("data/users.txt", "r") as f:
 
             for baris in f:
 
@@ -51,7 +53,7 @@ while True:
 
                             like = 0
 
-                            with open("postingan.txt", "a") as f:
+                            with open("data/postingan.txt", "a") as f:
                                 f.write(f"{username_login}|{caption}|{like}\n")
 
                             print("Posting berhasil dibuat")
@@ -61,7 +63,7 @@ while True:
 
                             following = []
 
-                            with open("follow.txt", "r") as f:
+                            with open("data/follow.txt", "r") as f:
 
                                 for baris in f:
 
@@ -77,7 +79,7 @@ while True:
 
                             print("\n=== FEED POSTINGAN ===")
 
-                            with open("postingan.txt", "r") as f:
+                            with open("data/postingan.txt", "r") as f:
 
                                 nomor = 1
 
@@ -111,7 +113,7 @@ while True:
 
                                 semua_post = []
 
-                                with open("postingan.txt", "r") as f:
+                                with open("data/postingan.txt", "r") as f:
 
                                     for baris in f:
 
@@ -132,7 +134,7 @@ while True:
 
                                         count_feed += 1
 
-                                with open("postingan.txt", "w") as f:
+                                with open("data/postingan.txt", "w") as f:
 
                                     for post in semua_post:
 
@@ -152,7 +154,7 @@ while True:
                                 "Masukkan username yang ingin di-follow: "
                             )
 
-                            with open("follow.txt", "a") as f:
+                            with open("data/follow.txt", "a") as f:
                                 f.write(f"{username_login}|{target}\n")
 
                             print("Berhasil follow user")
@@ -179,7 +181,7 @@ while True:
         username = input("Masukkan username: ")
         password = input("Masukkan password: ")
 
-        with open("data_user.txt", "a") as f:
+        with open("data/users.txt", "a") as f:
             f.write(username + "," + password + "\n")
 
         print("Akun berhasil dibuat")
