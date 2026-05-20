@@ -1,196 +1,273 @@
-while True:
-
-    print("\n==== MENU ====")
-    print("1. Login")
-    print("2. Register")
-    print("3. Keluar")
-
-    pilihan = input("Pilihan menu: ")
-
-    # ================= LOGIN =================
-    from src.epifanius_auth.auth_system import login, register
-
-    if pilihan == "1":
-
-        print("\n=== LOGIN ===")
-
-        username = input("Masukkan username: ")
-        password = input("Masukkan password: ")
-
-        found = False
-
-        with open("data/users.txt", "r") as f:
-
-            for baris in f:
-
-                data = baris.strip().split(",")
-
-                username_file = data[0]
-                password_file = data[1]
-
-                if username == username_file and password == password_file:
-
-                    found = True
-                    username_login = username
-
-                    print("Login berhasil")
-
-                    # ========= MENU USER =========
-                    while True:
-
-                        print("\n==== MENU USER ====")
-                        print("1. Buat Post")
-                        print("2. Lihat Feed")
-                        print("3. Follow User")
-                        print("4. Logout")
-
-                        pilihan_user = input("Masukkan pilihan: ")
-
-                        # ======== BUAT POST ========
-                        if pilihan_user == "1":
-
-                            caption = input("Masukkan caption: ")
-
-                            like = 0
-
-                            with open("data/postingan.txt", "a") as f:
-                                f.write(f"{username_login}|{caption}|{like}\n")
-
-                            print("Posting berhasil dibuat")
-
-                        # ======== LIHAT FEED ========
-                        elif pilihan_user == "2":
-
-                            following = []
-
-                            with open("data/follow.txt", "r") as f:
-
-                                for baris in f:
-
-                                    data = baris.strip().split("|")
-
-                                    follower = data[0]
-                                    target = data[1]
-
-                                    if follower == username_login:
-                                        following.append(target)
-
-                            posts = []
-
-                            print("\n=== FEED POSTINGAN ===")
-
-                            with open("data/postingan.txt", "r") as f:
-
-                                nomor = 1
-
-                                for baris in f:
-
-                                    data = baris.strip().split("|")
-
-                                    username_post = data[0]
-                                    caption = data[1]
-                                    like = data[2]
-
-                                    if username_post in following or username_post == username_login:
-
-                                        posts.append(data)
-
-                                        print("=" * 30)
-                                        print(f"{nomor}. Username : {username_post}")
-                                        print(f"   Caption  : {caption}")
-                                        print(f"   Like     : {like}")
-                                        print("=" * 30)
-
-                                        nomor += 1
-
-                            if len(posts) > 0:
-
-                                pilih = int(input("\nLike posting nomor: "))
-
-                                posts[pilih - 1][2] = str(
-                                    int(posts[pilih - 1][2]) + 1
-                                )
-
-                                semua_post = []
-
-                                with open("data/postingan.txt", "r") as f:
-
-                                    for baris in f:
-
-                                        data = baris.strip().split("|")
-                                        semua_post.append(data)
-
-                                count_feed = 0
-
-                                for i in range(len(semua_post)):
-
-                                    username_post = semua_post[i][0]
-
-                                    if username_post in following or username_post == username_login:
-
-                                        if count_feed == pilih - 1:
-
-                                            semua_post[i][2] = posts[pilih - 1][2]
-
-                                        count_feed += 1
-
-                                with open("data/postingan.txt", "w") as f:
-
-                                    for post in semua_post:
-
-                                        f.write(
-                                            f"{post[0]}|{post[1]}|{post[2]}\n"
-                                        )
-
-                                print("Like berhasil ditambahkan")
-
-                            else:
-                                print("Belum ada postingan")
-
-                        # ======== FOLLOW USER ========
-                        elif pilihan_user == "3":
-
-                            target = input(
-                                "Masukkan username yang ingin di-follow: "
-                            )
-
-                            with open("data/follow.txt", "a") as f:
-                                f.write(f"{username_login}|{target}\n")
-
-                            print("Berhasil follow user")
-
-                        # ======== LOGOUT ========
-                        elif pilihan_user == "4":
-
-                            print("Logout berhasil")
-                            break
-
-                        else:
-                            print("Pilihan tidak valid")
-
-                    break
-
-        if found == False:
-            print("Username atau password salah")
-
-    # ================= REGISTER =================
-    elif pilihan == "2":
-
-        print("\n=== REGISTER ===")
-
-        username = input("Masukkan username: ")
-        password = input("Masukkan password: ")
-
-        with open("data/users.txt", "a") as f:
-            f.write(username + "," + password + "\n")
-
-        print("Akun berhasil dibuat")
-
-    # ================= KELUAR =================
-    elif pilihan == "3":
-
-        print("Program selesai")
-        break
-
-    else:
-        print("Pilihan tidak valid")
+# ============================================================
+# MAIN PROGRAM — Social Media CLI
+# Anggota:
+#   - Epifanius  : Sistem autentikasi (login, register)
+#   - Ayu        : Sistem posting (buat post, feed, komentar)
+#   - Salsabila  : Sistem sosial (follow, chat, sorting user)
+# ============================================================
+
+import os
+import sys
+
+# Tambahkan direktori src ke path agar import modul berjalan
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+
+# ── Import modul autentikasi (Epi) ──
+from epifanius_auth.auth_system import login, register
+from epifanius_auth.login_history import tampilkan_history
+
+# ── Import modul posting & feed (Ayu) ──
+from ayu_post.undo_system import UndoSystem
+from ayu_post.feed_system import FeedSystem
+from ayu_post.comment_tree import CommentTree
+
+# ── Import modul sosial (Salsabila) ──
+from salsabila_social.follow_graph import (
+    follow_user, unfollow_user,
+    show_following, show_followers,
+    load_follow_data
+)
+from salsabila_social.sistem_chat import send_message, show_chat
+from salsabila_social.sorting_menu import sort_ascending, sort_descending, search_user
+
+USERS_FILE  = "data/users.txt"
+FOLLOW_FILE = "data/follow.txt"
+
+
+# ════════════════════════════════════════════════════════════
+# UTILITAS
+# ════════════════════════════════════════════════════════════
+
+def ambil_semua_username() -> list:
+    """Membaca semua username terdaftar dari file."""
+    usernames = []
+    if not os.path.exists(USERS_FILE):
+        return usernames
+    with open(USERS_FILE, "r") as f:
+        for baris in f:
+            baris = baris.strip()
+            if baris:
+                usernames.append(baris.split(",")[0])
+    return usernames
+
+
+def ambil_following(username: str) -> list:
+    """Membaca daftar user yang di-follow oleh username dari follow graph."""
+    graph = load_follow_data()
+    return graph.get(username, [])
+
+
+def cetak_judul(teks: str):
+    """Mencetak header dengan border."""
+    lebar = 42
+    print("\n╔" + "═" * lebar + "╗")
+    print("║" + teks.center(lebar) + "║")
+    print("╚" + "═" * lebar + "╝")
+
+
+# ════════════════════════════════════════════════════════════
+# MENU POSTING (Ayu)
+# ════════════════════════════════════════════════════════════
+
+def menu_posting(username_login: str):
+    """Menu lengkap untuk fitur postingan: buat, undo, feed, komentar."""
+    undo_sys = UndoSystem(username_login)
+
+    while True:
+        cetak_judul("MENU POSTINGAN")
+        print("  1. Buat Post Baru")
+        print("  2. Undo Post Terakhir")
+        print("  3. Riwayat Post Sesi Ini")
+        print("  4. Lihat Feed & Like")
+        print("  5. Komentar Postingan")
+        print("  0. Kembali")
+        print("─" * 44)
+
+        pilihan = input("  Pilih menu: ").strip()
+
+        if pilihan == "1":
+            caption = input("\n  Masukkan caption: ").strip()
+            if caption:
+                undo_sys.buat_post(caption)
+            else:
+                print("  [!] Caption tidak boleh kosong.")
+
+        elif pilihan == "2":
+            undo_sys.undo_post()
+
+        elif pilihan == "3":
+            undo_sys.lihat_riwayat()
+
+        elif pilihan == "4":
+            following = ambil_following(username_login)
+            feed_sys  = FeedSystem(username_login, following)
+            feed_sys.menu()
+
+        elif pilihan == "5":
+            try:
+                post_id = int(input("\n  Masukkan nomor post yang ingin dikomentari: "))
+                tree    = CommentTree(post_id)
+                tree.menu(username_login)
+            except ValueError:
+                print("  [!] Masukkan angka yang valid.")
+
+        elif pilihan == "0":
+            break
+
+        else:
+            print("  [!] Pilihan tidak valid.")
+
+
+# ════════════════════════════════════════════════════════════
+# MENU SOSIAL (Salsabila)
+# ════════════════════════════════════════════════════════════
+
+def menu_sosial(username_login: str):
+    """Menu lengkap untuk fitur sosial: follow, chat, sorting, cari user."""
+    daftar_user = ambil_semua_username()
+
+    while True:
+        cetak_judul("MENU SOSIAL MEDIA")
+        print(f"  Login sebagai : {username_login}")
+        print("─" * 44)
+        print("  1. Follow User")
+        print("  2. Unfollow User")
+        print("  3. Lihat Following")
+        print("  4. Lihat Followers")
+        print("  5. Kirim Pesan (Chat)")
+        print("  6. Lihat Riwayat Chat")
+        print("  7. Urutkan User (A-Z / Z-A)")
+        print("  8. Cari User")
+        print("  0. Kembali")
+        print("─" * 44)
+
+        pilihan = input("  Pilih menu: ").strip()
+
+        if pilihan == "1":
+            target = input("\n  Username yang ingin di-follow: ").strip()
+            follow_user(username_login, target)
+
+        elif pilihan == "2":
+            target = input("\n  Username yang ingin di-unfollow: ").strip()
+            unfollow_user(username_login, target)
+
+        elif pilihan == "3":
+            show_following(username_login)
+
+        elif pilihan == "4":
+            show_followers(username_login)
+
+        elif pilihan == "5":
+            penerima = input("\n  Kirim pesan ke (username): ").strip()
+            pesan    = input("  Isi pesan: ").strip()
+            send_message(username_login, penerima, pesan)
+
+        elif pilihan == "6":
+            show_chat(username_login)
+
+        elif pilihan == "7":
+            print("\n  Urutkan berdasarkan:")
+            print("  1. A-Z (Ascending)")
+            print("  2. Z-A (Descending)")
+            sub = input("  Pilihan: ").strip()
+
+            if sub == "1":
+                hasil = sort_ascending(daftar_user)
+                label = "A-Z"
+            elif sub == "2":
+                hasil = sort_descending(daftar_user)
+                label = "Z-A"
+            else:
+                print("  [!] Pilihan tidak valid.")
+                continue
+
+            print(f"\n  Daftar User ({label}):")
+            for i, u in enumerate(hasil, 1):
+                print(f"    {i}. {u}")
+
+        elif pilihan == "8":
+            keyword = input("\n  Kata kunci pencarian: ").strip()
+            hasil   = search_user(daftar_user, keyword)
+
+            print(f"\n  Hasil pencarian '{keyword}':")
+            if hasil:
+                for i, u in enumerate(hasil, 1):
+                    print(f"    {i}. {u}")
+            else:
+                print("  (tidak ditemukan)")
+
+        elif pilihan == "0":
+            break
+
+        else:
+            print("  [!] Pilihan tidak valid.")
+
+
+# ════════════════════════════════════════════════════════════
+# MENU UTAMA USER (setelah login)
+# ════════════════════════════════════════════════════════════
+
+def menu_user(username_login: str):
+    """Menu utama yang ditampilkan setelah user berhasil login."""
+    while True:
+        cetak_judul(f"SELAMAT DATANG, {username_login.upper()}")
+        print("  1. Postingan (Buat, Feed, Komentar)")
+        print("  2. Sosial     (Follow, Chat, Cari User)")
+        print("  3. Riwayat Login")
+        print("  0. Logout")
+        print("─" * 44)
+
+        pilihan = input("  Pilih menu: ").strip()
+
+        if pilihan == "1":
+            menu_posting(username_login)
+
+        elif pilihan == "2":
+            menu_sosial(username_login)
+
+        elif pilihan == "3":
+            tampilkan_history(username_login)
+
+        elif pilihan == "0":
+            print(f"\n  [✓] {username_login} berhasil logout. Sampai jumpa!\n")
+            break
+
+        else:
+            print("  [!] Pilihan tidak valid.")
+
+
+# ════════════════════════════════════════════════════════════
+# MENU AWAL (Sebelum Login)
+# ════════════════════════════════════════════════════════════
+
+def main():
+    """Titik masuk utama program."""
+    while True:
+        cetak_judul("SOCIAL MEDIA APP")
+        print("  1. Login")
+        print("  2. Register")
+        print("  0. Keluar")
+        print("─" * 44)
+
+        pilihan = input("  Pilih menu: ").strip()
+
+        if pilihan == "1":
+            user = login()
+            if user is not None:
+                menu_user(user.username)
+
+        elif pilihan == "2":
+            register()
+
+        elif pilihan == "0":
+            print("\n  Program selesai. Terima kasih!\n")
+            break
+
+        else:
+            print("  [!] Pilihan tidak valid.")
+
+
+# ── Entry point ──
+if __name__ == "__main__":
+    main()

@@ -1,42 +1,131 @@
-#register
-#login
-#verifikasi akun
-'''1.cek username
-2.cek password
-3.simpan akun ke file'''
+# ============================================================
+# AUTH SYSTEM — Sistem Autentikasi Pengguna
+# Fitur:
+#   1. Register  : Tambah akun baru dengan validasi
+#   2. Login     : Verifikasi username & password dari file
+#   3. Simpan    : Data user ke data/users.txt (format: username,password)
+# ============================================================
 
-def register():
-    print("\n=== REGISTER ===")
+import os
+from epifanius_auth.user_class import User
+from epifanius_auth.login_history import simpan_history
 
-    username = input("Masukkan username: ")
-    password = input("Masukkan password: ")
+USERS_FILE = "data/users.txt"
 
-    with open("data_user.txt", "a") as f:
-        f.write(username + "," + password + "\n")
 
-    print("Akun berhasil dibuat")
-    
-def login():
-    
-    print("\n=== LOGIN ===")
+# ── Utilitas: baca semua user dari file ──
+def _baca_semua_user() -> list[User]:
+    """Membaca seluruh data user dari file dan mengembalikan list User."""
+    users = []
 
-    username = input("Masukkan username: ")
-    password = input("Masukkan password: ")
+    if not os.path.exists(USERS_FILE):
+        return users
 
-    found = False
-
-    with open("data_user.txt", "r") as f:
-
+    with open(USERS_FILE, "r") as f:
         for baris in f:
+            baris = baris.strip()
+            if not baris:
+                continue
+            data = baris.split(",", 1)
+            if len(data) == 2:
+                users.append(User(data[0], data[1]))
 
-            data = baris.strip().split(",")
+    return users
 
-            username_file = data[0]
-            password_file = data[1]
 
-            if username == username_file and password == password_file:
+# ── Utilitas: cek apakah username sudah terdaftar ──
+def _username_tersedia(username: str) -> bool:
+    """Mengembalikan True jika username belum dipakai."""
+    users = _baca_semua_user()
+    return all(u.username.lower() != username.lower() for u in users)
 
-                found = True
-                username_login = username
 
-                print("Login berhasil")
+# ── Register ──
+def register() -> bool:
+    """
+    Mendaftarkan akun baru.
+
+    Validasi:
+      - Username tidak boleh kosong dan belum dipakai
+      - Password minimal 4 karakter
+      - Konfirmasi password harus cocok
+
+    Returns:
+        True jika registrasi berhasil, False jika dibatalkan.
+    """
+    print("\n╔══════════════════════════════════════╗")
+    print("║              REGISTER                 ║")
+    print("╚══════════════════════════════════════╝")
+
+    # ── Input & validasi username ──
+    while True:
+        username = input("  Username : ").strip()
+
+        if not username:
+            print("  [!] Username tidak boleh kosong.")
+            continue
+
+        if not _username_tersedia(username):
+            print(f"  [!] Username '{username}' sudah digunakan. Coba yang lain.")
+            continue
+
+        break   # username valid
+
+    # ── Input & validasi password ──
+    while True:
+        password = input("  Password : ").strip()
+
+        if len(password) < 4:
+            print("  [!] Password minimal 4 karakter.")
+            continue
+
+        konfirmasi = input("  Konfirmasi password : ").strip()
+
+        if password != konfirmasi:
+            print("  [!] Password tidak cocok. Coba lagi.")
+            continue
+
+        break   # password valid
+
+    # ── Simpan ke file ──
+    os.makedirs("data", exist_ok=True)
+
+    with open(USERS_FILE, "a") as f:
+        f.write(f"{username},{password}\n")
+
+    print(f"\n  [✓] Akun '{username}' berhasil dibuat! Silakan login.")
+    return True
+
+
+# ── Login ──
+def login() -> User | None:
+    """
+    Melakukan proses login.
+
+    Proses:
+      1. Input username & password
+      2. Cari kecocokan di data/users.txt
+      3. Catat riwayat login (BERHASIL / GAGAL)
+
+    Returns:
+        Objek User jika berhasil, None jika gagal.
+    """
+    print("\n╔══════════════════════════════════════╗")
+    print("║                LOGIN                  ║")
+    print("╚══════════════════════════════════════╝")
+
+    username = input("  Username : ").strip()
+    password = input("  Password : ").strip()
+
+    users = _baca_semua_user()
+
+    for user in users:
+        if user.username == username and user.cek_password(password):
+            simpan_history(username, "BERHASIL")
+            print(f"\n  [✓] Login berhasil! Selamat datang, {username}.")
+            return user
+
+    # Tidak ditemukan
+    simpan_history(username, "GAGAL")
+    print("\n  [✗] Username atau password salah.")
+    return None
