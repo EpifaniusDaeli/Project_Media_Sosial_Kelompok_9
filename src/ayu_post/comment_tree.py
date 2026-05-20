@@ -19,10 +19,10 @@ class CommentTree:
         self.nodes     = {}    
         self.roots     = []
         self._next_id  = 1 
-        self._muat_komentar()
+        self.muat_komentar()
 
     # ── Muat komentar dari file ──
-    def _muat_komentar(self):
+    def muat_komentar(self):
 
         try:
             with open(self.file_komen, "r") as f:
@@ -31,16 +31,16 @@ class CommentTree:
                     if not baris:
                         continue
 
-                    data = baris.split("|", 4)   # maks 5 bagian
+                    data = baris.split("|", 4)
                     if len(data) < 5:
                         continue
 
                     try:
-                        comment_id      = int(data[0])
-                        pid_post = int(data[1])
-                        par_id   = int(data[2])
+                        comment_id = int(data[0])
+                        posts_id = int(data[1])
+                        parent_id = int(data[2])
                         username = data[3]
-                        teks     = data[4]
+                        teks = data[4]
                     except ValueError:
                         continue   # lewati baris yang error
 
@@ -48,7 +48,7 @@ class CommentTree:
                     if comment_id >= self._next_id:
                         self._next_id = comment_id + 1
 
-                    node = CommentNode(comment_id, pid_post, par_id, username, teks)
+                    node = CommentNode(comment_id, posts_id, parent_id, username, teks)
                     self.nodes[comment_id] = node
 
             for comment_id, node in self.nodes.items():
@@ -69,7 +69,6 @@ class CommentTree:
         comment_id  = self._next_id
         self._next_id += 1
 
-        # Validasi parent_id
         if parent_id != -1 and parent_id not in self.nodes:
             print(f"[!] Komentar ID {parent_id} tidak ada. Dijadikan komentar baru.")
             parent_id = -1
@@ -77,7 +76,6 @@ class CommentTree:
         node = CommentNode(comment_id, self.post_id, parent_id, username, teks)
         self.nodes[comment_id] = node
 
-        # Masukkan ke struktur tree
         if parent_id == -1:
             self.roots.append(node)
         else:
@@ -168,15 +166,15 @@ class CommentTree:
             elif pilihan == "3":
                 self.tampilkan_semua()
                 try:
-                    par_id = int(input("Masukkan ID komentar yang ingin dibalas: "))
-                    node   = self.cari_id(par_id)
+                    parent_id = int(input("Masukkan ID komentar yang ingin dibalas: "))
+                    node   = self.cari_id(parent_id)
                     if node is None:
-                        print(f"[!] Komentar ID {par_id} tidak ditemukan.")
+                        print(f"[!] Komentar ID {parent_id} tidak ditemukan.")
                     else:
                         print(f"    Membalas: @{node.username}: {node.teks}")
                         teks = input("Tulis balasan: ").strip()
                         if teks:
-                            self.tambah_komentar(username_login, teks, par_id)
+                            self.tambah_komentar(username_login, teks, parent_id)
                         else:
                             print("[!] Balasan tidak boleh kosong.")
                 except ValueError:
