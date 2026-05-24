@@ -1,14 +1,25 @@
+# ============================================================
+# FOLLOW GRAPH — Graf relasi follow antar pengguna
+# Struktur data : Graph (dictionary of lists)
+# Format file  : username:following1,following2,...
+# Fitur     :
+#   1. Follow user lain
+#   2. Unfollow user
+#   3. Lihat daftar following
+#   4. Lihat daftar followers
+# ============================================================
+
 import os
 
-# Path file penyimpanan data follow
-DATA_FILE = "data/follow.txt"
+# Path absolut agar tidak bergantung pada direktori kerja saat ini
+_BASE_DIR  = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_FILE  = os.path.join(_BASE_DIR, "data", "follow.txt")
 
-# ============================================================
-# STRUKTUR DATA: Graph menggunakan dictionary
+# Struktur graf:
 # graph = { "andi": ["budi", "caca"], "budi": ["andi"] }
-# ============================================================
 
-def load_follow_data():
+
+def load_follow_data() -> dict:
     """Membaca data follow dari file dan mengembalikan graph (dictionary)."""
     graph = {}
     if not os.path.exists(DATA_FILE):
@@ -19,80 +30,81 @@ def load_follow_data():
             line = line.strip()
             if not line:
                 continue
-            # Format: andi:budi,caca
-            parts = line.split(":")
-            user = parts[0]
-            following = parts[1].split(",") if parts[1] else []
-            graph[user] = [x for x in following if x]  # hapus string kosong
+
+            # Format: username:following1,following2
+            if ":" not in line:
+                continue   # lewati baris yang tidak valid
+
+            parts     = line.split(":", 1)
+            user      = parts[0]
+            following = [x for x in parts[1].split(",") if x]
+            graph[user] = following
+
     return graph
 
 
-def save_follow_data(graph):
-    """Menyimpan graph follow ke file data/follow.txt."""
-    os.makedirs("data", exist_ok=True)
+def save_follow_data(graph: dict):
+    """Menyimpan graph follow ke file."""
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, "w") as f:
         for user, following in graph.items():
-            # Format: andi:budi,caca
             f.write(f"{user}:{','.join(following)}\n")
 
 
-def follow_user(username, target):
-    """User melakukan follow ke user lain (target)."""
+def follow_user(username: str, target: str):
+    """User melakukan follow ke user lain."""
     if username == target:
-        print("❌ Tidak bisa follow diri sendiri.")
+        print("  [!] Tidak bisa follow diri sendiri.")
         return
 
     graph = load_follow_data()
 
-    # Pastikan kedua user ada di graph
     if username not in graph:
         graph[username] = []
     if target not in graph:
         graph[target] = []
 
     if target in graph[username]:
-        print(f"⚠️  {username} sudah mengikuti {target}.")
+        print(f"  [!] {username} sudah mengikuti {target}.")
     else:
         graph[username].append(target)
         save_follow_data(graph)
-        print(f"✅ {username} sekarang mengikuti {target}.")
+        print(f"  [✓] {username} sekarang mengikuti {target}.")
 
 
-def unfollow_user(username, target):
-    """User berhenti mengikuti (unfollow) user lain."""
+def unfollow_user(username: str, target: str):
+    """User berhenti mengikuti user lain."""
     graph = load_follow_data()
 
     if username not in graph or target not in graph[username]:
-        print(f"⚠️  {username} tidak mengikuti {target}.")
+        print(f"  [!] {username} tidak mengikuti {target}.")
     else:
         graph[username].remove(target)
         save_follow_data(graph)
-        print(f"✅ {username} berhenti mengikuti {target}.")
+        print(f"  [✓] {username} berhenti mengikuti {target}.")
 
 
-def show_following(username):
+def show_following(username: str):
     """Menampilkan daftar user yang di-follow oleh username."""
-    graph = load_follow_data()
+    graph     = load_follow_data()
     following = graph.get(username, [])
 
-    print(f"\n📋 {username} mengikuti {len(following)} akun:")
+    print(f"\n  {username} mengikuti {len(following)} akun:")
     if following:
         for i, user in enumerate(following, 1):
-            print(f"  {i}. {user}")
+            print(f"    {i}. {user}")
     else:
-        print("  (belum mengikuti siapapun)")
+        print("    (belum mengikuti siapapun)")
 
 
-def show_followers(username):
+def show_followers(username: str):
     """Menampilkan daftar user yang mengikuti username (followers)."""
-    graph = load_follow_data()
-
-    # Cari siapa saja yang punya username di list following mereka
+    graph     = load_follow_data()
     followers = [user for user, following in graph.items() if username in following]
 
-    print(f"\n👥 {username} diikuti oleh {len(followers)} akun:")
+    print(f"\n  {username} diikuti oleh {len(followers)} akun:")
     if followers:
         for i, user in enumerate(followers, 1):
-            print(f"  {i}. {user}")
+            print(f"    {i}. {user}")
     else:
-        print("  (belum ada yang mengikuti)")
+        print("    (belum ada yang mengikuti)")

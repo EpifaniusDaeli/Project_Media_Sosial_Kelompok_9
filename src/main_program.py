@@ -14,25 +14,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 # ── Import modul autentikasi (Epi) ──
-from epifanius_auth.auth_system import login, register
-from epifanius_auth.login_history import tampilkan_history
+from epifanius_auth.auth_system    import login, register
+from epifanius_auth.login_history  import tampilkan_history
 
 # ── Import modul posting & feed (Ayu) ──
-from ayu_post.undo_system import UndoSystem
-from ayu_post.feed_system import FeedSystem
-from ayu_post.comment_tree import CommentTree
+from ayu_post.undo_system  import UndoSystem
+from ayu_post.feed_system  import FeedSystem
 
 # ── Import modul sosial (Salsabila) ──
-from salsabila_social.follow_graph import (
+from salsabila_social.follow_graph  import (
     follow_user, unfollow_user,
     show_following, show_followers,
     load_follow_data
 )
-from salsabila_social.sistem_chat import send_message, show_chat
-from salsabila_social.sorting_menu import sort_ascending, sort_descending, search_user
+from salsabila_social.sistem_chat   import send_message, show_chat
+from salsabila_social.sorting_menu  import sort_ascending, sort_descending, search_user
 
-USERS_FILE  = "data/users.txt"
-FOLLOW_FILE = "data/follow.txt"
+# Path absolut ke file users
+_BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+USERS_FILE = os.path.join(_BASE_DIR, "..", "data", "users.txt")
 
 
 # ════════════════════════════════════════════════════════════
@@ -53,7 +53,7 @@ def ambil_semua_username() -> list:
 
 
 def ambil_following(username: str) -> list:
-    """Membaca daftar user yang di-follow oleh username dari follow graph."""
+    """Membaca daftar user yang di-follow oleh username."""
     graph = load_follow_data()
     return graph.get(username, [])
 
@@ -71,7 +71,13 @@ def cetak_judul(teks: str):
 # ════════════════════════════════════════════════════════════
 
 def menu_posting(username_login: str):
-    """Menu lengkap untuk fitur postingan: buat, undo, feed, komentar."""
+    """
+    Menu postingan:
+      1. Buat Post Baru
+      2. Undo Post Terakhir
+      3. Riwayat Post Sesi Ini
+      4. Lihat Feed, Like & Komentar
+    """
     undo_sys = UndoSystem(username_login)
 
     while True:
@@ -79,8 +85,7 @@ def menu_posting(username_login: str):
         print("  1. Buat Post Baru")
         print("  2. Undo Post Terakhir")
         print("  3. Riwayat Post Sesi Ini")
-        print("  4. Lihat Feed & Like")
-        print("  5. Komentar Postingan")
+        print("  4. Lihat Feed, Like & Komentar")
         print("  0. Kembali")
         print("─" * 44)
 
@@ -102,15 +107,7 @@ def menu_posting(username_login: str):
         elif pilihan == "4":
             following = ambil_following(username_login)
             feed_sys  = FeedSystem(username_login, following)
-            feed_sys.menu()
-
-        elif pilihan == "5":
-            try:
-                post_id = int(input("\n  Masukkan nomor post yang ingin dikomentari: "))
-                tree    = CommentTree(post_id)
-                tree.menu(username_login)
-            except ValueError:
-                print("  [!] Masukkan angka yang valid.")
+            feed_sys.menu(username_login)
 
         elif pilihan == "0":
             break
@@ -124,7 +121,7 @@ def menu_posting(username_login: str):
 # ════════════════════════════════════════════════════════════
 
 def menu_sosial(username_login: str):
-    """Menu lengkap untuk fitur sosial: follow, chat, sorting, cari user."""
+    """Menu sosial: follow, chat, sorting, cari user."""
     daftar_user = ambil_semua_username()
 
     while True:
@@ -160,7 +157,7 @@ def menu_sosial(username_login: str):
 
         elif pilihan == "5":
             penerima = input("\n  Kirim pesan ke (username): ").strip()
-            pesan    = input("  Isi pesan: ").strip()
+            pesan    = input("  Isi pesan               : ").strip()
             send_message(username_login, penerima, pesan)
 
         elif pilihan == "6":
@@ -209,10 +206,10 @@ def menu_sosial(username_login: str):
 # ════════════════════════════════════════════════════════════
 
 def menu_user(username_login: str):
-    """Menu utama yang ditampilkan setelah user berhasil login."""
+    """Menu utama setelah user berhasil login."""
     while True:
         cetak_judul(f"SELAMAT DATANG, {username_login.upper()}")
-        print("  1. Postingan (Buat, Feed, Komentar)")
+        print("  1. Postingan  (Buat, Feed, Like & Komentar)")
         print("  2. Sosial     (Follow, Chat, Cari User)")
         print("  3. Riwayat Login")
         print("  0. Logout")
