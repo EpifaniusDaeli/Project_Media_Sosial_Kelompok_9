@@ -1,8 +1,8 @@
 # ============================================================
 # MAIN PROGRAM — Social Media CLI
 # Anggota:
-#   - Epifanius  : Sistem autentikasi (login, register)
-#   - Ayu        : Sistem posting (buat post, feed, komentar)
+#   - Epifanius  : Sistem autentikasi (login, register, hash table)
+#   - Ayu        : Sistem posting (buat post, feed, komentar, story CLL, notif SLL)
 #   - Salsabila  : Sistem sosial (follow, chat, sorting user)
 # ============================================================
 
@@ -16,10 +16,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ── Import modul autentikasi (Epi) ──
 from epifanius_auth.auth_system    import login, register
 from epifanius_auth.login_history  import tampilkan_history
+from epifanius_auth.user_hash      import HashTable
 
 # ── Import modul posting & feed (Ayu) ──
 from ayu_post.undo_system  import UndoSystem
 from ayu_post.feed_system  import FeedSystem
+from ayu_post.notif_sll    import NotifSLL
+from ayu_post.story_cll    import StoryCLL
 
 # ── Import modul sosial (Salsabila) ──
 from salsabila_social.follow_graph  import (
@@ -70,15 +73,18 @@ def cetak_judul(teks: str):
 # MENU POSTING (Ayu)
 # ════════════════════════════════════════════════════════════
 
-def menu_posting(username_login: str):
+def menu_posting(username_login: str, notif: NotifSLL):
     """
     Menu postingan:
       1. Buat Post Baru
       2. Undo Post Terakhir
       3. Riwayat Post Sesi Ini
       4. Lihat Feed, Like & Komentar
+      5. Story (Circular Linked List)
+      6. Notifikasi (Single Linked List)
     """
-    undo_sys = UndoSystem(username_login)
+    undo_sys  = UndoSystem(username_login)
+    story_cll = StoryCLL()
 
     while True:
         cetak_judul("MENU POSTINGAN")
@@ -86,6 +92,8 @@ def menu_posting(username_login: str):
         print("  2. Undo Post Terakhir")
         print("  3. Riwayat Post Sesi Ini")
         print("  4. Lihat Feed, Like & Komentar")
+        print("  5. Story")
+        print("  6. Notifikasi")
         print("  0. Kembali")
         print("─" * 44)
 
@@ -95,6 +103,8 @@ def menu_posting(username_login: str):
             caption = input("\n  Masukkan caption: ").strip()
             if caption:
                 undo_sys.buat_post(caption)
+                # Tambahkan notifikasi ke SLL
+                notif.tambah(f"Post baru oleh @{username_login}: \"{caption[:30]}\"")
             else:
                 print("  [!] Caption tidak boleh kosong.")
 
@@ -107,7 +117,17 @@ def menu_posting(username_login: str):
         elif pilihan == "4":
             following = ambil_following(username_login)
             feed_sys  = FeedSystem(username_login, following)
-            feed_sys.menu(username_login)
+            feed_sys.menu(username_login, notif)
+
+        elif pilihan == "5":
+            story_cll.menu(username_login)
+
+        elif pilihan == "6":
+            notif.tampilkan(username_login)
+            if not notif.is_empty():
+                hapus = input("\n  Hapus notifikasi terlama? (y/n): ").strip().lower()
+                if hapus == "y":
+                    notif.hapus_terlama()
 
         elif pilihan == "0":
             break
@@ -202,29 +222,52 @@ def menu_sosial(username_login: str):
 
 
 # ════════════════════════════════════════════════════════════
+# MENU HASH TABLE (Epi — untuk presentasi / edukasi)
+# ════════════════════════════════════════════════════════════
+
+def menu_hash_table():
+    """Menampilkan isi hash table user — berguna saat presentasi."""
+    usernames = ambil_semua_username()
+    if not usernames:
+        print("\n  [!] Belum ada user terdaftar.")
+        return
+
+    tabel = HashTable.dari_list(usernames)
+    tabel.tampilkan()
+
+
+# ════════════════════════════════════════════════════════════
 # MENU UTAMA USER (setelah login)
 # ════════════════════════════════════════════════════════════
 
 def menu_user(username_login: str):
     """Menu utama setelah user berhasil login."""
+    # Buat SLL notifikasi baru untuk sesi ini
+    notif = NotifSLL()
+    notif.tambah(f"Selamat datang kembali, @{username_login}!")
+
     while True:
         cetak_judul(f"SELAMAT DATANG, {username_login.upper()}")
-        print("  1. Postingan  (Buat, Feed, Like & Komentar)")
+        print("  1. Postingan  (Buat, Feed, Story, Notifikasi)")
         print("  2. Sosial     (Follow, Chat, Cari User)")
         print("  3. Riwayat Login")
+        print("  4. Lihat Hash Table User")
         print("  0. Logout")
         print("─" * 44)
 
         pilihan = input("  Pilih menu: ").strip()
 
         if pilihan == "1":
-            menu_posting(username_login)
+            menu_posting(username_login, notif)
 
         elif pilihan == "2":
             menu_sosial(username_login)
 
         elif pilihan == "3":
             tampilkan_history(username_login)
+
+        elif pilihan == "4":
+            menu_hash_table()
 
         elif pilihan == "0":
             print(f"\n  [✓] {username_login} berhasil logout. Sampai jumpa!\n")

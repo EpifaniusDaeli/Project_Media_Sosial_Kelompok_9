@@ -1,15 +1,17 @@
 # ============================================================
 # AUTH SYSTEM — Sistem Autentikasi Pengguna
-# Struktur data : List of User objects, File handling
+# Struktur data : List of User objects, Hash Table (cache cek username)
 # Fitur     :
 #   1. Register  : Tambah akun baru dengan validasi
 #   2. Login     : Verifikasi username & password dari file
-#   3. Simpan    : Data user ke data/users.txt (format: username,password)
+#   3. Hash Table digunakan untuk pengecekan username duplikat (O(1))
+#   4. Simpan    : Data user ke data/users.txt (format: username,password)
 # ============================================================
 
 import os
-from epifanius_auth.user_class import User
+from epifanius_auth.user_class  import User
 from epifanius_auth.login_history import simpan_history
+from epifanius_auth.user_hash   import HashTable
 
 # Path absolut agar tidak bergantung pada direktori kerja saat ini
 _BASE_DIR  = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,11 +38,17 @@ def _baca_semua_user() -> list:
     return users
 
 
-# ── Utilitas: cek apakah username sudah terdaftar ──
-def _username_tersedia(username: str) -> bool:
-    """Mengembalikan True jika username belum dipakai."""
+# ── Utilitas: bangun hash table dari semua username terdaftar ──
+def _bangun_hash_table() -> HashTable:
+    """
+    Membangun HashTable dari seluruh username di file.
+    Digunakan untuk pengecekan duplikat O(1) saat register.
+    """
     users = _baca_semua_user()
-    return all(u.username.lower() != username.lower() for u in users)
+    tabel = HashTable(ukuran=max(16, len(users) * 2))
+    for u in users:
+        tabel.insert(u.username, u.password)
+    return tabel
 
 
 # ── Register ──
@@ -49,7 +57,7 @@ def register() -> bool:
     Mendaftarkan akun baru.
 
     Validasi:
-      - Username tidak boleh kosong dan belum dipakai
+      - Username tidak boleh kosong dan belum dipakai (cek via Hash Table)
       - Password minimal 4 karakter
       - Konfirmasi password harus cocok
 
@@ -60,6 +68,9 @@ def register() -> bool:
     print("║               REGISTER                   ║")
     print("╚══════════════════════════════════════════╝")
 
+    # Bangun hash table sekali untuk semua pengecekan duplikat
+    tabel = _bangun_hash_table()
+
     # ── Input & validasi username ──
     while True:
         username = input("  Username          : ").strip()
@@ -68,7 +79,8 @@ def register() -> bool:
             print("  [!] Username tidak boleh kosong.")
             continue
 
-        if not _username_tersedia(username):
+        # Cek duplikat menggunakan Hash Table — O(1) rata-rata
+        if tabel.exists(username):
             print(f"  [!] Username '{username}' sudah digunakan. Coba yang lain.")
             continue
 
@@ -107,8 +119,9 @@ def login():
 
     Proses:
       1. Input username & password
-      2. Cari kecocokan di data/users.txt
-      3. Catat riwayat login (BERHASIL / GAGAL)
+      2. Cari kecocokan menggunakan Hash Table (O(1))
+      3. Verifikasi password
+      4. Catat riwayat login (BERHASIL / GAGAL)
 
     Returns:
         Objek User jika berhasil, None jika gagal.
@@ -120,15 +133,17 @@ def login():
     username = input("  Username : ").strip()
     password = input("  Password : ").strip()
 
-    users = _baca_semua_user()
+    # Bangun hash table lalu cari username — O(1) rata-rata
+    tabel = _bangun_hash_table()
 
-    for user in users:
-        if user.username == username and user.cek_password(password):
+    if tabel.exists(username):
+        password_tersimpan = tabel.search(username)
+        if password_tersimpan == password:
             simpan_history(username, "BERHASIL")
             print(f"\n  [✓] Login berhasil! Selamat datang, {username}.")
-            return user
+            return User(username, password)
 
-    # Tidak ditemukan
+    # Tidak ditemukan atau password salah
     simpan_history(username, "GAGAL")
     print("\n  [✗] Username atau password salah.")
     return None

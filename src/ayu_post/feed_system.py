@@ -4,8 +4,8 @@
 # Fitur     :
 #   1. Muat feed dari file (posts milik sendiri + following)
 #   2. Tampilkan feed beserta komentar tiap post
-#   3. Like postingan
-#   4. Tambah komentar / balas komentar
+#   3. Like postingan (memicu notifikasi SLL)
+#   4. Tambah komentar / balas komentar (memicu notifikasi SLL)
 #   5. Cari postingan berdasarkan caption atau username
 # ============================================================
 
@@ -29,8 +29,8 @@ class PostNode:
         self.username = username
         self.caption  = caption
         self.like     = like
-        self.prev     = None
-        self.next     = None
+        self.prev     = None   # pointer ke node sebelumnya (DLL)
+        self.next     = None   # pointer ke node berikutnya (DLL)
 
     def __str__(self):
         return f"@{self.username}: {self.caption} | ❤ {self.like}"
@@ -45,13 +45,13 @@ class FeedDoubleLinkedList:
         self.size  = 0
 
     def append(self, post_id: int, username: str, caption: str, like: int):
-        """Menambahkan node baru di akhir list."""
+        """Menambahkan node baru di akhir list (tail)."""
         node = PostNode(post_id, username, caption, like)
         if self.head is None:
             self.head = node
             self.tail = node
         else:
-            node.prev      = self.tail
+            node.prev      = self.tail   # DLL: sambungkan prev
             self.tail.next = node
             self.tail      = node
         self.size += 1
@@ -140,7 +140,6 @@ class FeedSystem:
                     if username_post in self.following or username_post == self.username_login:
                         self.feed.append(idx, username_post, caption, like)
         except FileNotFoundError:
-            # Buat file kosong jika belum ada
             os.makedirs(os.path.dirname(POSTS_FILE), exist_ok=True)
             open(POSTS_FILE, "w").close()
 
@@ -156,7 +155,7 @@ class FeedSystem:
 
         return self.feed.tampilkan()
 
-    def like_post(self, posts: list, pilih: int):
+    def like_post(self, posts: list, pilih: int, notif=None):
         """Menambah satu like pada postingan yang dipilih."""
         if pilih < 1 or pilih > len(posts):
             print("  [!] Nomor postingan tidak valid.")
@@ -166,6 +165,10 @@ class FeedSystem:
         self._update_like_di_file(node)
         print(f"\n  [✓] Berhasil like postingan @{node.username}!")
         print(f"      Total like sekarang: {node.like}")
+
+        # Tambahkan notifikasi ke SLL
+        if notif is not None:
+            notif.tambah(f"@{self.username_login} menyukai post @{node.username}")
 
     def _update_like_di_file(self, node: PostNode):
         """Memperbarui jumlah like sebuah post di file."""
@@ -180,7 +183,7 @@ class FeedSystem:
         except FileNotFoundError:
             print("  [!] Gagal menyimpan perubahan like.")
 
-    def komentar_post(self, posts: list, pilih: int, username_login: str):
+    def komentar_post(self, posts: list, pilih: int, username_login: str, notif=None):
         """Membuka menu komentar untuk post yang dipilih."""
         if pilih < 1 or pilih > len(posts):
             print("  [!] Nomor postingan tidak valid.")
@@ -189,6 +192,10 @@ class FeedSystem:
         print(f"\n  Postingan @{node.username}: \"{node.caption}\"")
         tree = CommentTree(node.post_id)
         tree.menu(username_login)
+
+        # Tambahkan notifikasi ke SLL setelah keluar menu komentar
+        if notif is not None:
+            notif.tambah(f"@{username_login} mengomentari post @{node.username}")
 
     def cari_postingan(self):
         """Menu pencarian postingan berdasarkan caption atau username."""
@@ -219,7 +226,7 @@ class FeedSystem:
             for i, node in enumerate(hasil, 1):
                 print(f"    {i}. @{node.username}: {node.caption}  [❤ {node.like}]")
 
-    def menu(self, username_login: str):
+    def menu(self, username_login: str, notif=None):
         """Menu feed: tampilkan post+komentar, like, komentar, cari."""
         while True:
             posts = self.tampilkan_feed()
@@ -236,7 +243,7 @@ class FeedSystem:
                     continue
                 try:
                     nomor = int(input("  Like posting nomor: "))
-                    self.like_post(posts, nomor)
+                    self.like_post(posts, nomor, notif)
                 except ValueError:
                     print("  [!] Masukkan angka yang valid.")
 
@@ -245,7 +252,7 @@ class FeedSystem:
                     continue
                 try:
                     nomor = int(input("  Pilih nomor post untuk dikomentari: "))
-                    self.komentar_post(posts, nomor, username_login)
+                    self.komentar_post(posts, nomor, username_login, notif)
                 except ValueError:
                     print("  [!] Masukkan angka yang valid.")
 
