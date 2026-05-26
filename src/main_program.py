@@ -222,11 +222,11 @@ def menu_sosial(username_login: str):
 
 
 # ════════════════════════════════════════════════════════════
-# MENU HASH TABLE (Epi — untuk presentasi / edukasi)
+# MENU HASH TABLE (Epi)
 # ════════════════════════════════════════════════════════════
 
 def menu_hash_table():
-    """Menampilkan isi hash table user — berguna saat presentasi."""
+    """Menampilkan isi hash table user."""
     usernames = ambil_semua_username()
     if not usernames:
         print("\n  [!] Belum ada user terdaftar.")
