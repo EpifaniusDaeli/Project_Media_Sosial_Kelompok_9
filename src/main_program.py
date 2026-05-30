@@ -1,49 +1,43 @@
 # ============================================================
-# MAIN PROGRAM — Social Media CLI
-# Anggota:
-#   - Epifanius  : Sistem autentikasi (login, register, hash table)
-#   - Ayu        : Sistem posting (buat post, feed, komentar, story CLL, notif SLL)
-#   - Salsabila  : Sistem sosial (follow, chat, sorting user)
+# MAIN PROGRAM — SOSIAL MEDIA CLI (INTEGRASI SISTEM)
 # ============================================================
 
 import os
 import sys
 
-# Tambahkan direktori src ke path agar import modul berjalan
+# Tambahkan direktori src ke path agar import modul berjalan lancar
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# ── Modul Autentikasi (Epifanius) ──
+from epifanius_auth.auth_system import login, register
+from epifanius_auth.login_history import tampilkan_history
+from epifanius_auth.user_hash import HashTable
 
-# ── Import modul autentikasi (Epi) ──
-from epifanius_auth.auth_system    import login, register
-from epifanius_auth.login_history  import tampilkan_history
-from epifanius_auth.user_hash      import HashTable
+# ── Modul Posting & Feed (Ayu) ──
+from ayu_post.undo_system import UndoSystem
+from ayu_post.feed_system import FeedSystem
+from ayu_post.notif_sll import NotifSLL
+from ayu_post.story_cll import StoryCLL
 
-# ── Import modul posting & feed (Ayu) ──
-from ayu_post.undo_system  import UndoSystem
-from ayu_post.feed_system  import FeedSystem
-from ayu_post.notif_sll    import NotifSLL
-from ayu_post.story_cll    import StoryCLL
-
-# ── Import modul sosial (Salsabila) ──
-from salsabila_social.follow_graph  import (
+# ── Modul Sosial & Chat (Salsabila) ──
+from salsabila_social.follow_graph import (
     follow_user, unfollow_user,
     show_following, show_followers,
     load_follow_data
 )
-from salsabila_social.sistem_chat   import send_message, show_chat
-from salsabila_social.sorting_menu  import sort_ascending, sort_descending, search_user
+from salsabila_social.sistem_chat import send_message, show_chat
+from salsabila_social.sorting_menu import sort_ascending, sort_descending, search_user
 
-# Path absolut ke file users
-_BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+# Path file teks data user
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_FILE = os.path.join(_BASE_DIR, "..", "data", "users.txt")
 
 
 # ════════════════════════════════════════════════════════════
-# UTILITAS
+# FUNGSI UTILITAS / PEMBANTU
 # ════════════════════════════════════════════════════════════
 
-def ambil_semua_username() -> list:
-    """Membaca semua username terdaftar dari file."""
+def ambil_semua_username():
     usernames = []
     if not os.path.exists(USERS_FILE):
         return usernames
@@ -55,14 +49,14 @@ def ambil_semua_username() -> list:
     return usernames
 
 
-def ambil_following(username: str) -> list:
-    """Membaca daftar user yang di-follow oleh username."""
+def ambil_following(username):
     graph = load_follow_data()
-    return graph.get(username, [])
+    if username in graph:
+        return graph[username]
+    return []
 
 
-def cetak_judul(teks: str):
-    """Mencetak header dengan border."""
+def cetak_judul(teks):
     lebar = 42
     print("\n╔" + "═" * lebar + "╗")
     print("║" + teks.center(lebar) + "║")
@@ -70,20 +64,11 @@ def cetak_judul(teks: str):
 
 
 # ════════════════════════════════════════════════════════════
-# MENU POSTING (Ayu)
+# MENU UTAMA POSTINGAN (Ayu)
 # ════════════════════════════════════════════════════════════
 
-def menu_posting(username_login: str, notif: NotifSLL):
-    """
-    Menu postingan:
-      1. Buat Post Baru
-      2. Undo Post Terakhir
-      3. Riwayat Post Sesi Ini
-      4. Lihat Feed, Like & Komentar
-      5. Story (Circular Linked List)
-      6. Notifikasi (Single Linked List)
-    """
-    undo_sys  = UndoSystem(username_login)
+def menu_posting(username_login, notif):
+    undo_sys = UndoSystem(username_login)
     story_cll = StoryCLL()
 
     while True:
@@ -103,7 +88,6 @@ def menu_posting(username_login: str, notif: NotifSLL):
             caption = input("\n  Masukkan caption: ").strip()
             if caption:
                 undo_sys.buat_post(caption)
-                # Tambahkan notifikasi ke SLL
                 notif.tambah(f"Post baru oleh @{username_login}: \"{caption[:30]}\"")
             else:
                 print("  [!] Caption tidak boleh kosong.")
@@ -116,7 +100,7 @@ def menu_posting(username_login: str, notif: NotifSLL):
 
         elif pilihan == "4":
             following = ambil_following(username_login)
-            feed_sys  = FeedSystem(username_login, following)
+            feed_sys = FeedSystem(username_login, following)
             feed_sys.menu(username_login, notif)
 
         elif pilihan == "5":
@@ -131,17 +115,15 @@ def menu_posting(username_login: str, notif: NotifSLL):
 
         elif pilihan == "0":
             break
-
         else:
             print("  [!] Pilihan tidak valid.")
 
 
 # ════════════════════════════════════════════════════════════
-# MENU SOSIAL (Salsabila)
+# MENU UTAMA SOSIAL (Salsabila)
 # ════════════════════════════════════════════════════════════
 
-def menu_sosial(username_login: str):
-    """Menu sosial: follow, chat, sorting, cari user."""
+def menu_sosial(username_login):
     daftar_user = ambil_semua_username()
 
     while True:
@@ -177,7 +159,7 @@ def menu_sosial(username_login: str):
 
         elif pilihan == "5":
             penerima = input("\n  Kirim pesan ke (username): ").strip()
-            pesan    = input("  Isi pesan               : ").strip()
+            pesan = input("  Isi pesan               : ").strip()
             send_message(username_login, penerima, pesan)
 
         elif pilihan == "6":
@@ -200,49 +182,49 @@ def menu_sosial(username_login: str):
                 continue
 
             print(f"\n  Daftar User ({label}):")
-            for i, u in enumerate(hasil, 1):
-                print(f"    {i}. {u}")
+            for i in range(len(hasil)):
+                print(f"    {i+1}. {hasil[i]}")
 
         elif pilihan == "8":
             keyword = input("\n  Kata kunci pencarian: ").strip()
-            hasil   = search_user(daftar_user, keyword)
+            hasil = search_user(daftar_user, keyword)
 
             print(f"\n  Hasil pencarian '{keyword}':")
             if hasil:
-                for i, u in enumerate(hasil, 1):
-                    print(f"    {i}. {u}")
+                for i in range(len(hasil)):
+                    print(f"    {i+1}. {hasil[i]}")
             else:
                 print("  (tidak ditemukan)")
 
         elif pilihan == "0":
             break
-
         else:
             print("  [!] Pilihan tidak valid.")
 
 
 # ════════════════════════════════════════════════════════════
-# MENU HASH TABLE (Epi)
+# MENU TESTING HASH TABLE (Bagian Edukasi Milik Epi)
 # ════════════════════════════════════════════════════════════
 
 def menu_hash_table():
-    """Menampilkan isi hash table user."""
     usernames = ambil_semua_username()
     if not usernames:
         print("\n  [!] Belum ada user terdaftar.")
         return
 
-    tabel = HashTable.dari_list(usernames)
+    # Memanggil method untuk membangun hash table dari array usernames
+    tabel = HashTable(ukuran=max(16, len(usernames) * 2))
+    for u in usernames:
+        tabel.insert(u, u)
     tabel.tampilkan()
 
 
 # ════════════════════════════════════════════════════════════
-# MENU UTAMA USER (setelah login)
+# DASHBOARD UTAMA SETELAH LOGIN
 # ════════════════════════════════════════════════════════════
 
-def menu_user(username_login: str):
-    """Menu utama setelah user berhasil login."""
-    # Buat SLL notifikasi baru untuk sesi ini
+def menu_user(username_login):
+    # Membuat objek struktur data Single Linked List untuk menampung notifikasi sesi ini
     notif = NotifSLL()
     notif.tambah(f"Selamat datang kembali, @{username_login}!")
 
@@ -272,17 +254,15 @@ def menu_user(username_login: str):
         elif pilihan == "0":
             print(f"\n  [✓] {username_login} berhasil logout. Sampai jumpa!\n")
             break
-
         else:
             print("  [!] Pilihan tidak valid.")
 
 
 # ════════════════════════════════════════════════════════════
-# MENU AWAL (Sebelum Login)
+# ENTRY POINT UTAMA
 # ════════════════════════════════════════════════════════════
 
 def main():
-    """Titik masuk utama program."""
     while True:
         cetak_judul("SOCIAL MEDIA APP")
         print("  1. Login")
@@ -294,6 +274,7 @@ def main():
 
         if pilihan == "1":
             user = login()
+            # Jika login sukses (mengembalikan objek User)
             if user is not None:
                 menu_user(user.username)
 
@@ -303,11 +284,9 @@ def main():
         elif pilihan == "0":
             print("\n  Program selesai. Terima kasih!\n")
             break
-
         else:
             print("  [!] Pilihan tidak valid.")
 
 
-# ── Entry point ──
 if __name__ == "__main__":
     main()

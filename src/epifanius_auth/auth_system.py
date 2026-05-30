@@ -1,31 +1,27 @@
 # ============================================================
-# AUTH SYSTEM — Sistem Autentikasi Pengguna
-# Struktur data : List of User objects, Hash Table (cache cek username)
-# Fitur     :
-#   1. Register  : Tambah akun baru dengan validasi
-#   2. Login     : Verifikasi username & password dari file
-#   3. Hash Table digunakan untuk pengecekan username duplikat (O(1))
-#   4. Simpan    : Data user ke data/users.txt (format: username,password)
+# PROJECT KELOMPOK: SOSIAL MEDIA CLI - MODUL AUTH
+# Struktur data: List & Hash Table
 # ============================================================
 
 import os
-from epifanius_auth.user_class  import User
+from epifanius_auth.user_class import User
 from epifanius_auth.login_history import simpan_history
-from epifanius_auth.user_hash   import HashTable
+from epifanius_auth.user_hash import HashTable
 
-# Path absolut agar tidak bergantung pada direktori kerja saat ini
-_BASE_DIR  = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Setup path file tempat menyimpan data akun user
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 USERS_FILE = os.path.join(_BASE_DIR, "data", "users.txt")
 
 
-# ── Utilitas: baca semua user dari file ──
-def _baca_semua_user() -> list:
-    """Membaca seluruh data user dari file dan mengembalikan list User."""
+# Fungsi pembantu: ambil semua data user dari file users.txt
+def baca_semua_user():
     users = []
 
+    # Kalau file belum ada, langsung return list kosong
     if not os.path.exists(USERS_FILE):
         return users
 
+    # Buka file dan baca baris per baris
     with open(USERS_FILE, "r") as f:
         for baris in f:
             baris = baris.strip()
@@ -38,40 +34,33 @@ def _baca_semua_user() -> list:
     return users
 
 
-# ── Utilitas: bangun hash table dari semua username terdaftar ──
-def _bangun_hash_table() -> HashTable:
-    """
-    Membangun HashTable dari seluruh username di file.
-    Digunakan untuk pengecekan duplikat O(1) saat register.
-    """
-    users = _baca_semua_user()
-    tabel = HashTable(ukuran=max(16, len(users) * 2))
+# Fungsi pembantu: mindahin data file ke hash table biar cepat dicek
+def bangun_hash_table():
+    users = baca_semua_user()
+    
+    # Inisialisasi ukuran hash table
+    ukuran_tabel = 16
+    if len(users) * 2 > 16:
+        ukuran_tabel = len(users) * 2
+        
+    tabel = HashTable(ukuran=ukuran_tabel)
+    
+    # Masukkan semua username dan password ke hash table
     for u in users:
         tabel.insert(u.username, u.password)
     return tabel
 
 
-# ── Register ──
-def register() -> bool:
-    """
-    Mendaftarkan akun baru.
-
-    Validasi:
-      - Username tidak boleh kosong dan belum dipakai (cek via Hash Table)
-      - Password minimal 4 karakter
-      - Konfirmasi password harus cocok
-
-    Returns:
-        True jika registrasi berhasil, False jika dibatalkan.
-    """
+# Fungsi untuk Menu Register Akun Baru
+def register():
     print("\n╔══════════════════════════════════════════╗")
-    print("║               REGISTER                   ║")
+    print("║                REGISTER                  ║")
     print("╚══════════════════════════════════════════╝")
 
-    # Bangun hash table sekali untuk semua pengecekan duplikat
-    tabel = _bangun_hash_table()
+    # Siapkan hash table untuk cek duplikat username
+    tabel = bangun_hash_table()
 
-    # ── Input & validasi username ──
+    # Loop input username sampai valid
     while True:
         username = input("  Username          : ").strip()
 
@@ -79,14 +68,14 @@ def register() -> bool:
             print("  [!] Username tidak boleh kosong.")
             continue
 
-        # Cek duplikat menggunakan Hash Table — O(1) rata-rata
+        # Cek ke hash table apakah username sudah terpakai
         if tabel.exists(username):
             print(f"  [!] Username '{username}' sudah digunakan. Coba yang lain.")
             continue
 
-        break   # username valid
+        break # Keluar loop kalau username aman
 
-    # ── Input & validasi password ──
+    # Loop input password sampai valid
     while True:
         password = input("  Password           : ").strip()
 
@@ -100,9 +89,9 @@ def register() -> bool:
             print("  [!] Password tidak cocok. Coba lagi.")
             continue
 
-        break   # password valid
+        break # Keluar loop kalau password cocok
 
-    # ── Simpan ke file ──
+    # Simpan akun baru ke file txt
     os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
 
     with open(USERS_FILE, "a") as f:
@@ -112,20 +101,8 @@ def register() -> bool:
     return True
 
 
-# ── Login ──
+# Fungsi untuk Menu Login
 def login():
-    """
-    Melakukan proses login.
-
-    Proses:
-      1. Input username & password
-      2. Cari kecocokan menggunakan Hash Table (O(1))
-      3. Verifikasi password
-      4. Catat riwayat login (BERHASIL / GAGAL)
-
-    Returns:
-        Objek User jika berhasil, None jika gagal.
-    """
     print("\n╔══════════════════════════════════════════╗")
     print("║                 LOGIN                    ║")
     print("╚══════════════════════════════════════════╝")
@@ -133,17 +110,19 @@ def login():
     username = input("  Username : ").strip()
     password = input("  Password : ").strip()
 
-    # Bangun hash table lalu cari username — O(1) rata-rata
-    tabel = _bangun_hash_table()
+    # Ambil data terbaru dari hash table untuk verifikasi login
+    tabel = bangun_hash_table()
 
+    # Proses pencarian di hash table (O(1))
     if tabel.exists(username):
         password_tersimpan = tabel.search(username)
+        # Jika password di input sama dengan di hash table
         if password_tersimpan == password:
             simpan_history(username, "BERHASIL")
             print(f"\n  [✓] Login berhasil! Selamat datang, {username}.")
             return User(username, password)
 
-    # Tidak ditemukan atau password salah
+    # Kalau username tidak ada atau password salah
     simpan_history(username, "GAGAL")
     print("\n  [✗] Username atau password salah.")
     return None

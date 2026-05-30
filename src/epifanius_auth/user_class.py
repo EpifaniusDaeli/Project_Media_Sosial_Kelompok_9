@@ -1,15 +1,18 @@
 # ============================================================
-# USER CLASS — Model data pengguna
+# PROJECT KELOMPOK: SOSIAL MEDIA CLI - MODUL USER CLASS
+# Konsep: Pemrograman Berorientasi Objek (OOP) - Encapsulation
 # ============================================================
 
 class User:
-    def __init__(self, username: str, password: str):
+    # Constructor untuk inisialisasi objek user baru
+    def __init__(self, username, password):
         self.username = username
         self.password = password
 
+    # Method bawaan untuk mengubah objek menjadi string saat dicetak
     def __str__(self):
         return f"User(username='{self.username}')"
 
-    def cek_password(self, password: str) -> bool:
-        """Memeriksa apakah password yang diberikan cocok."""
+    # Method untuk mencocokkan input password dengan password asli
+    def cek_password(self, password):
         return self.password == password

@@ -106,7 +106,7 @@ class StoryCLL:
 
     def _cetak_story(self, node: StoryNode):
         print("\n  ┌─────────────────────────────────────┐")
-        print(f"  │  @{node.username:<35}│")
+        print(f"  │@{node.username:<35}│")
         print(f"  │  {node.teks:<35}│")
         print("  └─────────────────────────────────────┘")
         print("  [← prev]  [next →]  (navigasi melingkar / circular)")

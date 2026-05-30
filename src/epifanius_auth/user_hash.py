@@ -1,134 +1,102 @@
 # ============================================================
-# USER HASH TABLE — Hash Table manual untuk indeks username
-# Struktur data : Hash Table dengan Separate Chaining
-# Fungsi hash  : jumlah nilai ASCII karakter mod ukuran tabel
-# Collision    : diselesaikan dengan chaining (list per bucket)
-# Fitur     :
-#   1. Insert username ke tabel
-#   2. Search username (O(1) rata-rata)
-#   3. Delete username dari tabel
-#   4. Tampilkan isi tabel (untuk debugging / edukasi)
+# PROJECT KELOMPOK: SOSIAL MEDIA CLI - STRUKTUR DATA HASH TABLE
+# Metode Penanganan Collision: Separate Chaining
 # ============================================================
 
-
 class HashTable:
-    """
-    Hash Table dengan Separate Chaining.
+    # Inisialisasi awal tabel kosong
+    def __init__(self, ukuran=16):
+        self.ukuran = ukuran
+        # Membuat list di dalam list (bucket) sebanyak ukuran tabel
+        self.buckets = []
+        for _ in range(ukuran):
+            self.buckets.append([])
+        self.jumlah_data = 0
 
-    Setiap slot (bucket) menyimpan list pasangan (key, value).
-    Collision ditangani dengan menambah ke list bucket yang sama.
+    # ── Fungsi Hash (Menghitung Indeks) ──
+    def hitung_hash(self, key):
+        # Jumlahkan nilai ASCII dari semua karakter teks, lalu di-mod ukuran tabel
+        total_ascii = 0
+        for c in key.lower():
+            total_ascii += ord(c)
+        return total_ascii % self.ukuran
 
-    Contoh dengan ukuran 8:
-        bucket[0]: []
-        bucket[1]: [("budi", "data")]
-        bucket[2]: [("andi", "data"), ("caca", "data")]  ← collision
-        ...
-    """
-
-    def __init__(self, ukuran: int = 16):
-        self.ukuran  = ukuran
-        self.buckets = [[] for _ in range(ukuran)]   # list of lists
-        self._count  = 0
-
-    # ── Fungsi Hash ──
-    def _hash(self, key: str) -> int:
-        """
-        Menghitung indeks bucket dari key (string).
-        Algoritma: jumlah nilai ASCII semua karakter, mod ukuran tabel.
-
-        Contoh: "budi" → (98+117+100+105) % 16 = 420 % 16 = 4
-        """
-        return sum(ord(c) for c in key.lower()) % self.ukuran
-
-    # ── Insert ──
-    def insert(self, key: str, value: str = ""):
-        """
-        Menyimpan pasangan key-value ke tabel.
-        Jika key sudah ada, value diperbarui.
-        """
-        idx    = self._hash(key)
+    # ── Fungsi Insert (Memasukkan Data Baru) ──
+    def insert(self, key, value=""):
+        idx = self.hitung_hash(key)
         bucket = self.buckets[idx]
 
-        # Cek apakah key sudah ada di bucket ini (update)
-        for i, (k, v) in enumerate(bucket):
+        # Kalau key sudah ada di bucket, update nilainya (biar tidak duplikat)
+        for i in range(len(bucket)):
+            k, v = bucket[i]
             if k.lower() == key.lower():
                 bucket[i] = (key, value)
                 return
 
-        # Belum ada → tambahkan (chaining)
+        # Kalau belum ada, tambahkan tuple baru ke dalam list bucket (Chaining)
         bucket.append((key, value))
-        self._count += 1
+        self.jumlah_data += 1
 
-    # ── Search ──
-    def search(self, key: str) -> str | None:
-        """
-        Mencari value berdasarkan key.
-        Kembalikan value jika ditemukan, None jika tidak.
-        Rata-rata O(1), worst case O(n) jika semua hash bertabrakan.
-        """
-        idx    = self._hash(key)
+    # ── Fungsi Search (Mencari Data) ──
+    def search(self, key):
+        idx = self.hitung_hash(key)
         bucket = self.buckets[idx]
 
+        # Cari data di dalam list bucket tertentu
         for k, v in bucket:
             if k.lower() == key.lower():
-                return v
+                return v # Kembalikan nilainya kalau ketemu
+        return None
 
-        return None   # tidak ditemukan
-
-    def exists(self, key: str) -> bool:
-        """Mengembalikan True jika key ada di tabel."""
-        return self.search(key) is not None
-
-    # ── Delete ──
-    def delete(self, key: str) -> bool:
-        """
-        Menghapus key dari tabel.
-        Kembalikan True jika berhasil, False jika key tidak ditemukan.
-        """
-        idx    = self._hash(key)
-        bucket = self.buckets[idx]
-
-        for i, (k, v) in enumerate(bucket):
-            if k.lower() == key.lower():
-                bucket.pop(i)
-                self._count -= 1
-                return True
-
+    # Fungsi pembantu untuk cek apakah data ada atau tidak (mengembalikan True/False)
+    def exists(self, key):
+        if self.search(key) is not None:
+            return True
         return False
 
-    # ── Build dari list ──
-    @classmethod
-    def dari_list(cls, usernames: list) -> "HashTable":
-        """
-        Membuat HashTable baru dari daftar username.
-        Dipakai untuk membangun cache cepat saat program mulai.
-        """
-        tabel = cls(ukuran=max(16, len(usernames) * 2))
-        for u in usernames:
-            tabel.insert(u, u)
-        return tabel
+    # ── Fungsi Delete (Menghapus Data) ──
+    def delete(self, key):
+        idx = self.hitung_hash(key)
+        bucket = self.buckets[idx]
 
-    # ── Tampilkan isi tabel (untuk edukasi) ──
+        # Cari data berdasarkan indeks di dalam bucket lalu hapus
+        for i in range(len(bucket)):
+            k, v = bucket[i]
+            if k.lower() == key.lower():
+                bucket.pop(i)
+                self.jumlah_data -= 1
+                return True
+        return False
+
+    # ── Fungsi Cetak Tabel (Sangat Berguna Pas Demo Depan Dosen) ──
     def tampilkan(self):
-        """Menampilkan isi setiap bucket — berguna untuk presentasi."""
         print("\n╔══════════════════════════════════════════╗")
         print("║          ISI HASH TABLE USER             ║")
         print("╚══════════════════════════════════════════╝")
         print(f"  Ukuran tabel : {self.ukuran} bucket")
-        print(f"  Jumlah data  : {self._count} user")
+        print(f"  Jumlah data  : {self.jumlah_data} user")
         print(f"  Fungsi hash  : sum(ASCII) mod {self.ukuran}")
         print("─" * 44)
 
         ada_isi = False
-        for i, bucket in enumerate(self.buckets):
+        for i in range(len(self.buckets)):
+            bucket = self.buckets[i]
             if bucket:
                 ada_isi = True
-                keys = ", ".join(k for k, v in bucket)
-                tag  = "  ← collision!" if len(bucket) > 1 else ""
-                print(f"  [{i:>2}] {keys}{tag}")
+                # Gabungkan semua nama user di bucket yang sama
+                isi_bucket = ""
+                for k, v in bucket:
+                    isi_bucket += k + ", "
+                isi_bucket = isi_bucket.rstrip(", ")
+                
+                # Kasih tanda kalau terjadi collision (tabrakan)
+                tag = ""
+                if len(bucket) > 1:
+                    tag = "  ← collision!"
+                print(f"  [{i:>2}] {isi_bucket}{tag}")
 
         if not ada_isi:
             print("  (tabel kosong)")
 
-    def count(self) -> int:
-        return self._count
+    def count(self):
+        return self.jumlah_data
